@@ -21,41 +21,53 @@ public class RNReactNativePingModule extends ReactContextBaseJavaModule {
         this.reactContext = reactContext;
     }
 
-    @ReactMethod
-    public void start(String ipAddress, Promise promise) {
-        try {
-            int rtt = PingUtil.getAvgRTT("http://" + ipAddress);
-            promise.resolve(Integer.valueOf(rtt));
-        } catch (Exception e) {
-            promise.reject(e);
-        }
+  @ReactMethod
+    public void start(final String ipAddress,final Promise promise) {
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                try {
+                    int rtt = PingUtil.getAvgRTT("http://" + ipAddress);
+                    promise.resolve(Integer.valueOf(rtt));
+                } catch (Exception e) {
+                    promise.reject(e);
+                }
+            }
+        }).start();
+
     }
 
     @ReactMethod
     public void getTrafficStats(final Promise promise) {
-        final long receiveTotal = TrafficStats.getTotalRxBytes();
-        final long sendTotal = TrafficStats.getTotalTxBytes();
-        final String receivedNetworkTotal = bytesToAvaiUnit(receiveTotal);
-        final String sendNetworkTotal = bytesToAvaiUnit(sendTotal);
-
-        new Handler().postDelayed(new Runnable() {
+        new Thread(new Runnable() {
             @Override
             public void run() {
-                long newReceivedTotal = TrafficStats.getTotalRxBytes();
-                long newSendTotal = TrafficStats.getTotalTxBytes();
+                final long receiveTotal = TrafficStats.getTotalRxBytes();
+                final long sendTotal = TrafficStats.getTotalTxBytes();
+                final String receivedNetworkTotal = bytesToAvaiUnit(receiveTotal);
+                final String sendNetworkTotal = bytesToAvaiUnit(sendTotal);
 
-                String receivedNetworkSpeed = bytesToAvaiUnit(newReceivedTotal - receiveTotal) + "/s";
-                String sendNetworkSpeed = bytesToAvaiUnit(newSendTotal - sendTotal) + "/s";
-                WritableMap map = Arguments.createMap();
+                new Handler().postDelayed(new Runnable() {
+                    @Override
+                    public void run() {
+                        long newReceivedTotal = TrafficStats.getTotalRxBytes();
+                        long newSendTotal = TrafficStats.getTotalTxBytes();
 
-                map.putString("receivedNetworkTotal", receivedNetworkTotal);
-                map.putString("sendNetworkTotal", sendNetworkTotal);
-                map.putString("receivedNetworkSpeed", receivedNetworkSpeed);
-                map.putString("sendNetworkSpeed", sendNetworkSpeed);
+                        String receivedNetworkSpeed = bytesToAvaiUnit(newReceivedTotal - receiveTotal) + "/s";
+                        String sendNetworkSpeed = bytesToAvaiUnit(newSendTotal - sendTotal) + "/s";
+                        WritableMap map = Arguments.createMap();
 
-                promise.resolve(map);
+                        map.putString("receivedNetworkTotal", receivedNetworkTotal);
+                        map.putString("sendNetworkTotal", sendNetworkTotal);
+                        map.putString("receivedNetworkSpeed", receivedNetworkSpeed);
+                        map.putString("sendNetworkSpeed", sendNetworkSpeed);
+
+                        promise.resolve(map);
+                    }
+                }, 1000);
             }
-        }, 1000);
+        }).start();
+
 
     }
 
